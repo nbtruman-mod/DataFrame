@@ -210,9 +210,7 @@ final class DataFrame
             $value = $callback($row_for_callback);
 
             $new_row = $row;
-
             $new_row[] = $value;
-
             $new_rows[] = $new_row;
         }
 
@@ -235,6 +233,10 @@ final class DataFrame
             throw new \RuntimeException("Column '{$new_name}' already exists.");
         }
 
+        if ($this->header[$index] === $new_name) {
+            return $this;
+        }
+
         $new_header = $this->header;
         $new_header[$index] = $new_name;
 
@@ -255,6 +257,57 @@ final class DataFrame
         }
 
         return new self($this->rows, array_values($new_names));
+    }
+
+    public function dropColumn($column): self
+    {
+        $index = $this->resolveColumn($column);
+
+        $new_rows = [];
+
+        foreach ($this->rows as $row) {
+            $new_row = $row;
+            unset($new_row[$index]);
+            $new_rows[] = array_values($new_row);
+        }
+
+        $new_header = $this->header;
+        unset($new_header[$index]);
+        $new_header = array_values($new_header);
+
+        return new self($new_rows, $new_header);
+    }
+
+    public function unique($column = null): self
+    {
+        $seen = [];
+        $new_rows = [];
+
+        if ($column === null) {
+            //Full row unique check
+            foreach ($this->rows as $row) {
+                $key = serialize($row);
+
+                if (!isset($seen[$key])) {
+                    $seen[$key] = true;
+                    $new_rows[] = $row;
+                }
+            }
+        } else {
+            //Column based unique check
+            $index = $this->resolveColumn($column);
+
+            foreach ($this->rows as $row) {
+                $key = serialize($row[$index]);
+
+                if (!isset($seen[$key])) {
+                    $seen[$key] = true;
+                    $new_rows[] = $row;
+                }
+            }
+        }
+
+        return new self($new_rows, $this->header);
     }
 
     public function toArray(): array
