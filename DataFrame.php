@@ -163,10 +163,28 @@ final class DataFrame
     {
         $new_rows = [];
 
-        foreach ($this->rows as $row) {
+        foreach ($this->rows as $i => $row) {
             $row_for_callback = $this->header ? array_combine($this->header, $row) : $row;
 
             $result = $callback($row_for_callback);
+
+            if (!is_array($result)) {
+                $type = gettype($result);
+
+                throw new \RuntimeException(
+                    "DataFrame::map() callback must return an array representing a row. "
+                    . "Row {$i} returned type {$type}"
+                );
+            }
+
+            $expected_column_count = $this->columnCount();
+
+            if (count($result) !== $expected_column_count) {
+                throw new \RuntimeException(
+                    "DataFrame::map() callback returned incorrect column count on row {$i}"
+                    . "Expected {$expected_column_count}, got " . count($result)
+                );
+            }
 
             if ($this->header) {
                 $result = array_values($result);
