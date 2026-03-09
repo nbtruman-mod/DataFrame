@@ -241,6 +241,22 @@ final class DataFrame
         return new self($this->rows, $new_header);
     }
 
+    public function renameColumns(array $new_names): self
+    {
+        if (count($new_names) !== $this->columnCount()) {
+            throw new \RuntimeException(
+                "renameColumns expects {$this->columnCount()} columns names, got "
+                . count($new_names)
+            );
+        }
+
+        if (count(array_unique($new_names)) !== count($new_names)) {
+            throw new \RuntimeException("renameColumns received duplicate column names");
+        }
+
+        return new self($this->rows, array_values($new_names));
+    }
+
     public function toArray(): array
     {
         return $this->rows;
