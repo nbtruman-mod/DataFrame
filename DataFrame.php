@@ -20,6 +20,10 @@ final class DataFrame
     public function __construct(array $rows, array $header = [])
     {
         $this->rows = $rows;
+
+        if (empty($header) && !empty($rows)) {
+            $header = range(0, count($rows[0]) - 1);
+        }
         $this->header = $header;
 
         $this->validate();
@@ -194,6 +198,35 @@ final class DataFrame
         }
 
         return new self($new_rows, $this->header);
+    }
+
+    public function addColumn(string $name, callable $callback): self
+    {
+        $new_rows = [];
+
+        foreach ($this->rows as $i => $row) {
+            $row_for_callback = $this->header ? array_combine($this->header, $row) : $row;
+
+            $value = $callback($row_for_callback);
+
+            $new_row = $row;
+
+            $new_row[] = $value;
+
+            $new_rows[] = $new_row;
+        }
+
+        $new_header = $this->header;
+
+        if ($this->header) {
+            if (isset($this->column_index[$name])) {
+                throw new \RuntimeException("Column '{$name}' already exists.");
+            }
+
+            $new_header[] = $name;
+        }
+
+        return new self($new_rows, $new_header);
     }
 
     public function toArray(): array
