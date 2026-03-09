@@ -10,7 +10,7 @@ namespace NEMESIS\DataFrame;
 
 final class DataFrame
 {
-    /** @var  array<int,string> */
+    /** @var  array<int,string|int> */
     private $header;
     /** @var array<int,array<int,mixed>> */
     private $rows;
@@ -52,6 +52,10 @@ final class DataFrame
     private function buildColumnIndex(): void
     {
         foreach ($this->header as $i => $name) {
+            if (isset($this->column_index[$name])) {
+                throw new \RuntimeException("Duplicate column name: {$name}");
+            }
+
             $this->column_index[$name] = $i;
         }
     }
@@ -68,11 +72,7 @@ final class DataFrame
 
     public function columnCount(): int
     {
-        if (!empty($this->header)) {
-            return count($this->header);
-        }
-
-        return empty($this->rows) ? 0 : count($this->rows[0]);
+        return count($this->header);
     }
 
     public function getHeader(): array
@@ -153,7 +153,7 @@ final class DataFrame
         $new_rows = [];
 
         foreach ($this->rows as $row) {
-            $row_for_callback = $this->header ? array_combine($this->header, $row) : $row;
+            $row_for_callback = array_combine($this->header, $row);
 
             if ($callback($row_for_callback)) {
                 $new_rows[] = $row;
@@ -168,7 +168,7 @@ final class DataFrame
         $new_rows = [];
 
         foreach ($this->rows as $i => $row) {
-            $row_for_callback = $this->header ? array_combine($this->header, $row) : $row;
+            $row_for_callback = array_combine($this->header, $row);
 
             $result = $callback($row_for_callback);
 
@@ -205,7 +205,7 @@ final class DataFrame
         $new_rows = [];
 
         foreach ($this->rows as $i => $row) {
-            $row_for_callback = $this->header ? array_combine($this->header, $row) : $row;
+            $row_for_callback = array_combine($this->header, $row);
 
             $value = $callback($row_for_callback);
 
@@ -218,19 +218,42 @@ final class DataFrame
 
         $new_header = $this->header;
 
-        if ($this->header) {
-            if (isset($this->column_index[$name])) {
-                throw new \RuntimeException("Column '{$name}' already exists.");
-            }
-
-            $new_header[] = $name;
+        if (isset($this->column_index[$name])) {
+            throw new \RuntimeException("Column '{$name}' already exists.");
         }
 
+        $new_header[] = $name;
+
         return new self($new_rows, $new_header);
+    }
+
+    public function renameColumn($column, string $new_name): self
+    {
+        $index = $this->resolveColumn($column);
+
+        if (isset($this->column_index[$new_name])) {
+            throw new \RuntimeException("Column '{$new_name}' already exists.");
+        }
+
+        $new_header = $this->header;
+        $new_header[$index] = $new_name;
+
+        return new self($this->rows, $new_header);
     }
 
     public function toArray(): array
     {
         return $this->rows;
+    }
+
+    public function toAssoc(): array
+    {
+        $rows = [];
+
+        foreach($this->rows as $row) {
+            $rows[] = array_combine($this->header, $row);
+        }
+
+        return $rows;
     }
 }
